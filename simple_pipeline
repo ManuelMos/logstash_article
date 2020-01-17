@@ -1,0 +1,36 @@
+input {
+ jdbc {
+ jdbc_driver_library => "<driver>"
+ jdbc_driver_class => "<driverclass>"
+ jdbc_connection_string => "<connectionString>"
+ jdbc_user => "<db user>"
+ jdbc_password => "<db password>"
+ tracking_column => "projectUpdateTimestamp"
+ use_column_value => true
+ tracking_column_type => "timestamp"
+ schedule => "*/5 * * * * *"
+ last_run_metadata_path => "/opt/logstash/lastrun/project"
+ statement => "select 
+id,
+...
+projectUpdateTimestamp
+from project 
+ inner join client on projectId = clientId
+ inner join offer on projectId = offerId
+WHERE projectUpdateTimestamp > :sql_last_value
+order by projectUpdateTimestamp desc"}
+}
+filter {
+ mutate {
+ copy => { "id" => "[@metadata][_id]"}
+ remove_field => ["@version", "projectUpdateTimestamp"]
+ }
+}
+output {
+ elasticsearch { hosts => [<url to elastic>]
+ index => "projectIndex"
+ document_id => "%{[@metadata][_id]}"
+ user => "<elastic user>"
+ password => "<elastic password>"
+ }
+}
